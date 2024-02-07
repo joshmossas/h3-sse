@@ -1,0 +1,6 @@
+{
+    "tabWidth": 4,
+    "trailingComma": "all",
+    "endOfLine": "lf",
+    "singleQuote": true
+}

@@ -1,0 +1,36 @@
+{
+    "name": "h3-sse",
+    "version": "0.0.1",
+    "description": "",
+    "type": "module",
+    "main": "./dist/index.mjs",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "h3",
+        "sse",
+        "server sent events"
+    ],
+    "author": "Joshua Sosso",
+    "license": "MIT",
+    "peerDependencies": {
+        "h3": "^1"
+    },
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^6.4.0",
+        "eslint": "^8.56.0",
+        "eslint-config-prettier": "^9.1.0",
+        "eslint-config-standard-with-typescript": "^43.0.1",
+        "eslint-plugin-import": "^2.25.2",
+        "eslint-plugin-n": "^15.0.0 || ^16.0.0 ",
+        "eslint-plugin-promise": "^6.0.0",
+        "h3": "^1.10.1",
+        "prettier": "^3.2.5",
+        "typescript": "^5.3.3",
+        "unbuild": "^2.0.0"
+    }
+}
