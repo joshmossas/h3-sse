@@ -63,32 +63,35 @@ export class EventStream {
     }
 
     /**
-     * Publish a new event for the client
+     * Publish new event(s) for the client
      */
-    async push(message: EventStreamMessage | string) {
+    async push(message: string): Promise<void>;
+    async push(message: string[]): Promise<void>;
+    async push(message: EventStreamMessage): Promise<void>;
+    async push(message: EventStreamMessage[]): Promise<void>;
+    async push(
+        message: EventStreamMessage | EventStreamMessage[] | string | string[],
+    ) {
         if (typeof message === 'string') {
             await this.sendEvent({ data: message });
             return;
         }
-        await this.sendEvent(message);
-    }
-
-    /**
-     *
-     * Publish multiple events for the client
-     */
-    async pushMany(messages: EventStreamMessage[] | string[]) {
-        const result: EventStreamMessage[] = [];
-        for (const msg of messages) {
-            if (typeof msg === 'string') {
-                result.push({
-                    data: msg,
-                });
-                continue;
+        if (Array.isArray(message)) {
+            if (message.length === 0) {
+                return;
             }
-            result.push(msg);
+            if (typeof message[0] === 'string') {
+                const msgs: EventStreamMessage[] = [];
+                for (const item of message as string[]) {
+                    msgs.push({ data: item });
+                }
+                await this.sendEvents(msgs);
+                return;
+            }
+            await this.sendEvents(message as EventStreamMessage[]);
+            return;
         }
-        await this.sendEvents(result);
+        await this.sendEvent(message);
     }
 
     private async sendEvent(message: EventStreamMessage) {
