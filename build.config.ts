@@ -6,4 +6,10 @@ export default defineBuildConfig({
     rootDir: '.',
     declaration: true,
     failOnWarn: false,
+    rollup: {
+        emitCJS: true,
+        dts: {
+            respectExternal: true,
+        },
+    },
 });
