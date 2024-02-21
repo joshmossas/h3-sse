@@ -73,6 +73,24 @@ export class EventStream {
         await this.sendEvent(message);
     }
 
+    /**
+     *
+     * Publish multiple events for the client
+     */
+    async pushMany(messages: EventStreamMessage[] | string[]) {
+        const result: EventStreamMessage[] = [];
+        for (const msg of messages) {
+            if (typeof msg === 'string') {
+                result.push({
+                    data: msg,
+                });
+                continue;
+            }
+            result.push(msg);
+        }
+        await this.sendEvents(result);
+    }
+
     private async sendEvent(message: EventStreamMessage) {
         if (this.paused && !this.unsentData) {
             this.unsentData = formatEventStreamMessage(message);
@@ -85,6 +103,19 @@ export class EventStream {
         await this.writer.write(
             this.encoder.encode(formatEventStreamMessage(message)),
         );
+    }
+
+    private async sendEvents(messages: EventStreamMessage[]) {
+        const payload = formatEventStreamMessages(messages);
+        if (this.paused && !this.unsentData) {
+            this.unsentData = payload;
+            return;
+        }
+        if (this.paused) {
+            this.unsentData += payload;
+            return;
+        }
+        await this.writer.write(this.encoder.encode(payload));
     }
 
     pause() {
@@ -194,6 +225,16 @@ export function formatEventStreamMessage(message: EventStreamMessage): string {
         result += `retry: ${message.retry}\n`;
     }
     result += `data: ${message.data}\n\n`;
+    return result;
+}
+
+export function formatEventStreamMessages(
+    messages: EventStreamMessage[],
+): string {
+    let result = '';
+    for (const msg of messages) {
+        result += formatEventStreamMessage(msg);
+    }
     return result;
 }
 
