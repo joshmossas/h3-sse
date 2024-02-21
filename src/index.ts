@@ -4,7 +4,7 @@ import {
     setResponseHeaders,
     setResponseStatus,
 } from 'h3';
-import type { H3Event } from 'h3';
+import type { H3Event, HTTPHeaderName } from 'h3';
 
 /**
  * Initialize an EventStream instance for creating [server sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
@@ -30,10 +30,7 @@ import type { H3Event } from 'h3';
  * sendEventStream(event, eventStream);
  * ```
  */
-export function createEventStream(
-    event: H3Event,
-    autoclose = false,
-): EventStream {
+export function createEventStream(event: H3Event, autoclose = false) {
     return new EventStream(event, autoclose);
 }
 
@@ -61,16 +58,14 @@ export class EventStream {
         this.lastEventId = getHeader(event, 'Last-Event-ID');
         this.writer = this.transformStream.writable.getWriter();
         if (autoclose) {
-            this.h3Event.node.req.on('close', async () => {
-                await this.close();
-            });
+            this.h3Event.node.req.on('close', () => this.close());
         }
     }
 
     /**
      * Publish a new event for the client
      */
-    async push(message: EventStreamMessage | string): Promise<void> {
+    async push(message: EventStreamMessage | string) {
         if (typeof message === 'string') {
             await this.sendEvent({ data: message });
             return;
@@ -78,7 +73,7 @@ export class EventStream {
         await this.sendEvent(message);
     }
 
-    private async sendEvent(message: EventStreamMessage): Promise<void> {
+    private async sendEvent(message: EventStreamMessage) {
         if (this.paused && !this.unsentData) {
             this.unsentData = formatEventStreamMessage(message);
             return;
@@ -92,20 +87,20 @@ export class EventStream {
         );
     }
 
-    pause(): void {
+    pause() {
         this.paused = true;
     }
 
-    get isPaused(): boolean {
+    get isPaused() {
         return this.paused;
     }
 
-    async resume(): Promise<void> {
+    async resume() {
         this.paused = false;
         await this.flush();
     }
 
-    async flush(): Promise<void> {
+    async flush() {
         if (this.unsentData?.length) {
             await this.writer.write(this.encoder.encode(this.unsentData));
             this.unsentData = undefined;
@@ -115,7 +110,7 @@ export class EventStream {
     /**
      * Close the stream and the connection if the stream is being sent to the client
      */
-    async close(): Promise<void> {
+    async close() {
         if (this.disposed) {
             return;
         }
@@ -140,7 +135,7 @@ export class EventStream {
     on(event: 'close' | 'request:close', callback: () => any): void {
         switch (event) {
             case 'close': {
-                void this.writer.closed.then(callback);
+                this.writer.closed.then(callback);
                 break;
             }
             case 'request:close': {
@@ -154,7 +149,7 @@ export class EventStream {
         }
     }
 
-    get stream(): ReadableStream<any> {
+    get stream() {
         return this.transformStream.readable;
     }
 }
@@ -169,7 +164,7 @@ export function isEventStream(input: unknown): input is EventStream {
 export async function sendEventStream(
     event: H3Event,
     eventStream: EventStream,
-): Promise<void> {
+) {
     setEventStreamHeaders(event);
     setResponseStatus(event, 200);
     event._handled = true;
@@ -202,16 +197,30 @@ export function formatEventStreamMessage(message: EventStreamMessage): string {
     return result;
 }
 
-function setEventStreamHeaders(event: H3Event): void {
+function setEventStreamHeaders(event: H3Event) {
     // TODO: (after HTTP/2 support comes to H3)
     // Somehow detect if server is serving HTTP/1.1 or HTTP/2
     // If current request is served via HTTP/2 omit the "Connection" header
     // see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Connection
-    setResponseHeaders(event, {
-        Connection: 'keep-alive',
+    const headers: Partial<
+        Record<HTTPHeaderName, string | number | readonly string[]>
+    > = {
         'Content-Type': 'text/event-stream',
         'Cache-Control':
             'private, no-cache, no-store, no-transform, must-revalidate, max-age=0',
         'X-Accel-Buffering': 'no', // prevent nginx from buffering the response
-    });
+    };
+
+    if (!isHttp2Request(event)) {
+        headers.Connection = 'keep-alive';
+    }
+
+    setResponseHeaders(event, headers);
+}
+
+export function isHttp2Request(event: H3Event) {
+    return (
+        getHeader(event, ':path') !== undefined &&
+        getHeader(event, ':method') !== undefined
+    );
 }

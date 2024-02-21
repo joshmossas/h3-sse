@@ -2,6 +2,16 @@
 
 H3 utilities for [server sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
 
+## Installation
+
+```bash [npm]
+npm install h3-sse
+```
+
+```bash [pnpm]
+pnpm install h3-sse
+```
+
 ## Basic Usage
 
 ```ts
@@ -17,7 +27,7 @@ eventHandler((event) => {
     }, 1000);
 
     // cleanup when the connection is closed
-    eventStream.on('request:close', () => {
+    eventStream.on('request:close', async () => {
         clearInterval(interval);
         await eventStream.close();
     });
