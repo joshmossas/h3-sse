@@ -1,7 +1,11 @@
 {
     "name": "h3-sse",
     "version": "0.0.7",
-    "description": "",
+    "description": "Server sent event utilities for the H3 http framework",
+    "repository": {
+        "url": "https://github.com/joshmossas/h3-sse.git",
+        "type": "git"
+    },
     "type": "module",
     "main": "./dist/index.cjs",
     "module": "./dist/index.mjs",

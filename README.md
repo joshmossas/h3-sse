@@ -2,6 +2,13 @@
 
 H3 utilities for [server sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
 
+## Table of Contents
+
+-   [Installation](#installation)
+-   [Basic Usage](#basic-usage)
+    -   [Autoclose Parameter](#autoclose-parameter)
+-   [Advanced Messages](#advanced-messages)
+
 ## Installation
 
 ```bash [npm]
