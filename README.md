@@ -8,6 +8,8 @@ H3 utilities for [server sent events](https://developer.mozilla.org/en-US/docs/W
 -   [Basic Usage](#basic-usage)
     -   [Autoclose Parameter](#autoclose-parameter)
 -   [Advanced Messages](#advanced-messages)
+-   [Accessing Last Event ID](#accessing-last-event-id)
+-   [Closing the stream and connection](#closing-the-stream-and-connection)
 
 ## Installation
 
