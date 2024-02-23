@@ -46,6 +46,28 @@ eventHandler((event) => {
 });
 ```
 
+It's important to note that `sendEventStream()` must be called before you can start pushing messages. So if you want to send an initial message you would have to do it like so.
+
+```ts
+eventHandler(async (event) => {
+    const eventStream = createEventStream(event);
+
+    // this must be called before pushing the first message;
+    // additionally this should NOT be awaited because it will block everything until the stream is closed
+    sendEventStream(event, eventStream);
+    await eventStream.push('hello world');
+
+    const interval = setInterval(async () => {
+        await eventStream.push('hello world');
+    }, 1000);
+
+    eventStream.on('request:close', () => {
+        clearInterval(interval);
+        await eventStream.close();
+    });
+});
+```
+
 ### Autoclose Parameter
 
 `createEventStream()` also comes with an `autoclose` option. When set to true the `EventStream` will automatically be closed when the connection has been closed after being sent to the client. (An EventStream that has not been sent using `sendEventStream()` will not be automatically closed when the connection closes)
@@ -60,6 +82,7 @@ eventHandler((event) => {
     const interval = setInterval(async () => {
         await eventStream.push('hello world');
     });
+
     // only the interval needs to be cleaned up now
     eventStream.on('close', () => {
         clearInterval(interval);
