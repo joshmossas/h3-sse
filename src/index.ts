@@ -38,7 +38,7 @@ export function createEventStream(
     event: H3Event,
     opts: EventStreamOptions = {},
 ) {
-    return new EventStream(event, { autoclose: opts.autoclose ?? false });
+    return new EventStream(event, { autoclose: opts.autoclose ?? true });
 }
 
 /**
@@ -68,7 +68,7 @@ export class EventStream {
         this._writer.closed.then(() => {
             this._writerIsClosed = true;
         });
-        if (opts.autoclose) {
+        if (opts.autoclose ?? true) {
             this._h3Event.node.req.on('close', () => this.close());
         }
     }
