@@ -6,6 +6,10 @@ import {
 } from 'h3';
 import type { H3Event, HTTPHeaderName } from 'h3';
 
+export interface EventStreamOptions {
+    autoclose?: boolean;
+}
+
 /**
  * Initialize an EventStream instance for creating [server sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
  *
@@ -30,23 +34,26 @@ import type { H3Event, HTTPHeaderName } from 'h3';
  * sendEventStream(event, eventStream);
  * ```
  */
-export function createEventStream(event: H3Event, autoclose = false) {
-    return new EventStream(event, autoclose);
+export function createEventStream(
+    event: H3Event,
+    opts: EventStreamOptions = {},
+) {
+    return new EventStream(event, { autoclose: opts.autoclose ?? false });
 }
 
 /**
  * A helper class for [server sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format)
  */
 export class EventStream {
-    private readonly h3Event: H3Event;
+    private readonly _h3Event: H3Event;
     lastEventId?: string;
-    private readonly transformStream = new TransformStream();
-    private readonly writer: WritableStreamDefaultWriter;
-    private readonly encoder: TextEncoder = new TextEncoder();
-    private writerIsClosed = false;
-    private paused = false;
-    private unsentData: undefined | string;
-    private disposed = false;
+    private readonly _transformStream = new TransformStream();
+    private readonly _writer: WritableStreamDefaultWriter;
+    private readonly _encoder: TextEncoder = new TextEncoder();
+    private _writerIsClosed = false;
+    private _paused = false;
+    private _unsentData: undefined | string;
+    private _disposed = false;
     _handled = false;
 
     /**
@@ -54,15 +61,15 @@ export class EventStream {
      * @param event H3Event
      * @param autoclose Automatically close the stream when the request has been closed
      */
-    constructor(event: H3Event, autoclose = false) {
-        this.h3Event = event;
+    constructor(event: H3Event, opts: EventStreamOptions = {}) {
+        this._h3Event = event;
         this.lastEventId = getHeader(event, 'Last-Event-ID');
-        this.writer = this.transformStream.writable.getWriter();
-        this.writer.closed.then(() => {
-            this.writerIsClosed = true;
+        this._writer = this._transformStream.writable.getWriter();
+        this._writer.closed.then(() => {
+            this._writerIsClosed = true;
         });
-        if (autoclose) {
-            this.h3Event.node.req.on('close', () => this.close());
+        if (opts.autoclose) {
+            this._h3Event.node.req.on('close', () => this.close());
         }
     }
 
@@ -99,59 +106,68 @@ export class EventStream {
     }
 
     private async sendEvent(message: EventStreamMessage) {
-        if (this.writerIsClosed) {
+        if (this._writerIsClosed) {
             return;
         }
-        if (this.paused && !this.unsentData) {
-            this.unsentData = formatEventStreamMessage(message);
+        if (this._paused && !this._unsentData) {
+            this._unsentData = formatEventStreamMessage(message);
             return;
         }
-        if (this.paused) {
-            this.unsentData += formatEventStreamMessage(message);
+        if (this._paused) {
+            this._unsentData += formatEventStreamMessage(message);
             return;
         }
-        await this.writer
-            .write(this.encoder.encode(formatEventStreamMessage(message)))
-            .catch();
+        await this._writeToStream(formatEventStreamMessage(message));
     }
 
     private async sendEvents(messages: EventStreamMessage[]) {
-        if (this.writerIsClosed) {
+        if (this._writerIsClosed) {
             return;
         }
         const payload = formatEventStreamMessages(messages);
-        if (this.paused && !this.unsentData) {
-            this.unsentData = payload;
+        if (this._paused && !this._unsentData) {
+            this._unsentData = payload;
             return;
         }
-        if (this.paused) {
-            this.unsentData += payload;
+        if (this._paused) {
+            this._unsentData += payload;
             return;
         }
 
-        await this.writer.write(this.encoder.encode(payload)).catch();
+        await this._writeToStream(payload);
+    }
+
+    private async _writeToStream(payload: string) {
+        if (this._writerIsClosed) {
+            return;
+        }
+        try {
+            await this._writer.write(this._encoder.encode(payload));
+            this._unsentData = '';
+        } catch (error) {
+            console.error('ERROR WRITING:', error);
+        }
     }
 
     pause() {
-        this.paused = true;
+        this._paused = true;
     }
 
     get isPaused() {
-        return this.paused;
+        return this._paused;
     }
 
     async resume() {
-        this.paused = false;
+        this._paused = false;
         await this.flush();
     }
 
     async flush() {
-        if (this.writerIsClosed) {
+        if (this._writerIsClosed) {
             return;
         }
-        if (this.unsentData?.length) {
-            await this.writer.write(this.encoder.encode(this.unsentData));
-            this.unsentData = undefined;
+        if (this._unsentData?.length) {
+            await this._writeToStream(this._unsentData);
         }
     }
 
@@ -159,46 +175,40 @@ export class EventStream {
      * Close the stream and the connection if the stream is being sent to the client
      */
     async close() {
-        if (this.disposed) {
+        if (this._disposed) {
             return;
         }
-        if (!this.writerIsClosed) {
-            await this.writer.close().catch();
+        if (!this._writerIsClosed) {
+            try {
+                await this._writer.close();
+            } catch (error) {
+                console.error('ERROR CLOSING:', error);
+            }
         }
         // check if the stream has been given to the client before closing the connection
         if (
-            this.h3Event._handled &&
+            this._h3Event._handled &&
             this._handled &&
-            !this.h3Event.node.res.closed
+            !this._h3Event.node.res.closed
         ) {
-            this.h3Event.node.res.end();
+            this._h3Event.node.res.end();
         }
-        this.disposed = true;
+        this._disposed = true;
     }
 
-    /**
-     * - `close` triggers when the writable stream is closed. It is also triggered after calling the `close()` method.
-     * - `request:close` triggers when the request connection has been closed by either the client or the server.
-     */
-    on(event: 'close' | 'request:close', callback: () => any): void {
-        switch (event) {
-            case 'close': {
-                this.writer.closed.then(callback);
-                break;
-            }
-            case 'request:close': {
-                this.h3Event.node.req.on('close', callback);
-                break;
-            }
-            default: {
-                event satisfies never; // ensures that the switch is exhaustive
-                break;
-            }
-        }
+    onClose(cb: () => any): void {
+        this._writer.closed.then(cb);
     }
 
     get stream() {
-        return this.transformStream.readable;
+        return this._transformStream.readable;
+    }
+
+    /**
+     * Send the event stream to the client
+     */
+    async send() {
+        await sendEventStream(this._h3Event, this);
     }
 }
 
@@ -209,10 +219,7 @@ export function isEventStream(input: unknown): input is EventStream {
     return input instanceof EventStream;
 }
 
-export async function sendEventStream(
-    event: H3Event,
-    eventStream: EventStream,
-) {
+async function sendEventStream(event: H3Event, eventStream: EventStream) {
     setEventStreamHeaders(event);
     setResponseStatus(event, 200);
     event._handled = true;

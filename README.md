@@ -36,13 +36,12 @@ eventHandler((event) => {
     }, 1000);
 
     // cleanup when the connection is closed
-    eventStream.on('request:close', async () => {
+    eventStream.onClose(async () => {
         clearInterval(interval);
-        await eventStream.close();
     });
 
     // send the stream to the client
-    await sendEventStream(event, eventStream);
+    await eventStream.send();
 });
 ```
 
@@ -54,41 +53,34 @@ eventHandler(async (event) => {
 
     // this must be called before pushing the first message;
     // additionally this should NOT be awaited because it will block everything until the stream is closed
-    sendEventStream(event, eventStream);
+    eventStream.send();
     await eventStream.push('hello world');
 
     const interval = setInterval(async () => {
         await eventStream.push('hello world');
     }, 1000);
 
-    eventStream.on('request:close', () => {
+    eventStream.onClose(async () => {
         clearInterval(interval);
-        await eventStream.close();
     });
 });
 ```
 
 ### Autoclose Parameter
 
-`createEventStream()` also comes with an `autoclose` option. When set to true the `EventStream` will automatically be closed when the connection has been closed after being sent to the client. (An EventStream that has not been sent using `sendEventStream()` will not be automatically closed when the connection closes)
+By default EventStreams will automatically be closed when the request has been closed by either the client or the server. If you wish to change this behavior you can set autoclose to false like so:
 
 ```ts
-import { eventHandler } from 'h3';
-import { createEventStream, sendEventStream } from 'h3-sse';
+const eventStream = createEventStream(event, { autoclose: false });
+```
 
-eventHandler((event) => {
-    const eventStream = createEventStream(event, true);
+This means if you want to close the stream after a connection has closes you will need to listen to it yourself:
 
-    const interval = setInterval(async () => {
-        await eventStream.push('hello world');
-    });
+```ts
+const eventStream = createEventStream(event, { autoclose: false });
 
-    // only the interval needs to be cleaned up now
-    eventStream.on('close', () => {
-        clearInterval(interval);
-    });
-
-    await sendEventStream(event, eventStream);
+event.node.req.on('close', async () => {
+    await eventStream.close();
 });
 ```
 
@@ -157,11 +149,11 @@ eventHandler((event) => {
         msgCount++;
         await eventStream.push(`hello world ${msgCount}`);
         if (msgCount >= 10) {
-            await eventStream.close();
             clearInterval(interval);
+            await eventStream.close();
         }
     }, 1000);
-    await sendEventStream(event, eventStream);
+    await eventStream.send();
 });
 ```
 
@@ -184,10 +176,10 @@ eventHandler((event) => {
                 data: 'No more data',
             });
             // cleanup
-            await eventStream.close();
             clearInterval(interval);
+            await eventStream.close();
         }
     }, 1000);
-    await sendEventStream(event, eventStream);
+    await eventStream.send();
 });
 ```
