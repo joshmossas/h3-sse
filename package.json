@@ -16,7 +16,8 @@
     ],
     "scripts": {
         "build": "unbuild",
-        "lint": "eslint ./src/**/*.ts"
+        "lint": "eslint ./src/**/*.ts",
+        "prepublish": "pnpm run build"
     },
     "keywords": [
         "h3",
