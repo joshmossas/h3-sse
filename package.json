@@ -30,17 +30,17 @@
         "h3": "^1"
     },
     "devDependencies": {
-        "@typescript-eslint/eslint-plugin": "^6.4.0",
-        "eslint": "^8.56.0",
+        "@typescript-eslint/eslint-plugin": "^7.8.0",
+        "@typescript-eslint/parser": "^7.8.0",
+        "eslint": "^8.57.0",
         "eslint-config-prettier": "^9.1.0",
-        "eslint-config-standard-with-typescript": "^43.0.1",
         "eslint-config-unjs": "^0.2.1",
-        "eslint-plugin-import": "^2.25.2",
-        "eslint-plugin-n": "^15.0.0 || ^16.0.0 ",
-        "eslint-plugin-promise": "^6.0.0",
-        "h3": "^1.10.1",
+        "eslint-plugin-import": "^2.29.1",
+        "eslint-plugin-n": "^17.3.1",
+        "eslint-plugin-promise": "^6.1.1",
+        "h3": "^1.11.1",
         "prettier": "^3.2.5",
-        "typescript": "^5.3.3",
+        "typescript": "^5.4.5",
         "unbuild": "^2.0.0"
     }
 }
