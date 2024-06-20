@@ -1,3 +1,12 @@
+# Deprecation Notice:
+
+The functionality of this library has been merged directly into H3 via https://github.com/unjs/h3/pull/586 & https://github.com/unjs/h3/pull/704. It is recommended that you now use the native H3 utilities. This library will receive no future updates.
+
+## Migration Guide
+
+-   `onClose()` is called `onClosed()` in the official H3 implementation.
+-   The `lastEventId` property is not available on EventStream. Instead you need to access it like so `getHeader(event, 'Last-Event-Id')`
+
 # H3 SSE
 
 H3 utilities for [server sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
